@@ -11,6 +11,8 @@ public class DrawerInteractable : XRGrabInteractable
     XRSocketInteractor socketInteractor;
     public XRSocketInteractor GetSocketIntractor => socketInteractor;
 
+    [SerializeField] XRPhysicsButtonInteractable physicsButton;
+
     [SerializeField]
     Transform drawerTransform;
 
@@ -21,6 +23,11 @@ public class DrawerInteractable : XRGrabInteractable
 
     [SerializeField]
     bool isLocked = true;
+
+    [SerializeField]
+    bool isDetachable = true;
+
+    [SerializeField] bool isDetached = true;
 
     [SerializeField]
     float maxZPos = 0.9f;
@@ -65,15 +72,22 @@ public class DrawerInteractable : XRGrabInteractable
 
     void Update()
     {
-        if (isGrabbed && drawerTransform != null)
-        {
-            drawerTransform.localPosition = new Vector3(
-                drawerTransform.localPosition.x,
-                drawerTransform.localPosition.y,
-                transform.localPosition.z);
 
-            CheckPositionLimits();
+        if (!isDetached)
+        {
+            if (isGrabbed && drawerTransform != null)
+            {
+                drawerTransform.localPosition = new Vector3(
+                    drawerTransform.localPosition.x,
+                    drawerTransform.localPosition.y,
+                    transform.localPosition.z);
+
+
+
+                CheckPositionLimits();
+            }
         }
+
     }
 
     protected override void OnSelectEntered(SelectEnterEventArgs args)
@@ -145,13 +159,29 @@ public class DrawerInteractable : XRGrabInteractable
         }
         else if (drawerTransform.localPosition.z >= maxZPos + limitDistances.z)
         {
-            isGrabbed = false;
-            drawerTransform.localPosition = new Vector3(
-                drawerTransform.localPosition.x,
-                drawerTransform.localPosition.y,
-                maxZPos);
-            ChangeLayerMask(DEFAULT_LAYER);
+            if(!isDetachable))
+            {
+                isGrabbed = false;
+                drawerTransform.localPosition = new Vector3(
+                    drawerTransform.localPosition.x,
+                    drawerTransform.localPosition.y,
+                    maxZPos);
+                ChangeLayerMask(DEFAULT_LAYER);
+
+            }
+
+            else
+            {
+
+            }
+
+
         }
+    }
+
+    private void DetachDrawer()
+    {
+        isDetached = true;
     }
 
     //Method to change the object's interaction layer mask for grabbing/ungrabbing purposes

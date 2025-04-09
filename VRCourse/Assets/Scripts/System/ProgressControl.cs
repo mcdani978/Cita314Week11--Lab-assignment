@@ -14,9 +14,17 @@ public class ProgressControl : MonoBehaviour
     [TextArea(2, 4)]
     public string[] challengeStrings;
 
+    [Header("Start Button")]
+
     [Header("Game Objects and Lights")]
     [SerializeField]
     private GameObject keyInteractableLight;
+
+    [Header("Drawer Interactables")]
+    [SerializeField] private DrawerInteractable drawer;
+    private XRSocketInteractor drawerSocket;
+
+    XRSocketInteractor drawerSocket;
 
     [Header("Start Options")]
     [SerializeField]
@@ -44,6 +52,7 @@ public class ProgressControl : MonoBehaviour
         if (OnStartGame != null)
         {
             OnStartGame.Invoke(startGameString);
+            SetDrawerInteractable();
         }
     }
 
@@ -62,6 +71,33 @@ public class ProgressControl : MonoBehaviour
             {
                 OnStartGame?.Invoke(challengeStrings[challengeNumber]);
             }
+
+            else if (challengeNumber >= challengeStrings.Length)
+            {
+
+            }
+        }
+    }
+
+    private void ChallengeComplete()
+    {
+        challengeNumber++;
+        if(challengeNumber < challengeStrings.Length)
+        {
+            OnChallengeComplete?.Invoke(challengeStrings[challengeNumber]);
+        }
+    }
+
+    private void OnDrawerSocketed(SelectEnterEventArgs arg0)
+    {
+        ChallengeComplete();
+    }
+
+    private void SetDrawerInteractable()
+    {
+        if(drawer !- null)
+        {
+            drawerSocket.selectEntered.AddListener(OnDrawerSocketed);
         }
     }
 }
