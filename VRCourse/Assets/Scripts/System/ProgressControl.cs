@@ -179,4 +179,3 @@ public class ProgressControl : MonoBehaviour
     }
 
 }
-
