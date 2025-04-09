@@ -1,8 +1,14 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
+using UnityEngine.Events;
 
 public class DrawerInteractable : XRGrabInteractable
 {
+
+    public UnityEvent OnDrawerDetach;
     //Serialized Fields
 
     [Header("Game Objects")]
@@ -182,6 +188,8 @@ public class DrawerInteractable : XRGrabInteractable
     private void DetachDrawer()
     {
         isDetached = true;
+        drawerTransform.SetParent(this.transform);
+        OnDrawerDetach?.Invoke();
     }
 
     //Method to change the object's interaction layer mask for grabbing/ungrabbing purposes

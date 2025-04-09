@@ -1,55 +1,73 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
-
-public class XRAudioManager : MonoBehaviour
+public class XrAudioManager : MonoBehaviour
 {
     [Header("Progress Control")]
-    [SerializeField] private ProgressControl progressControl;
-    [SerializeField] private AudioSource backgroundMusic;
-    [SerializeField] private AudioClip fallBackClip;
-    [SerializeField] private AudioSource progressSound;
-    [SerializeField] private AudioClip startGameClip;
-    [SerializeField] private AudioClip challengeCompleteClip;
+    [SerializeField] ProgressControl progressControl;
+    [SerializeField] AudioSource progressSound;
+    [SerializeField] AudioClip startGameClip;
+    [SerializeField] AudioClip challengeCompleteClip;
 
     [Header("Grab Interactables")]
-    [SerializeField] private XRGrabInteractable[] grabInteractables;
-    [SerializeField] private AudioSource grabSound;
-    [SerializeField] private AudioSource activatedSound;
-    [SerializeField] private AudioClip grabClip;
-    [SerializeField] private AudioClip keyClip;
-    [SerializeField] private AudioClip grabActivatedClip;
-    [SerializeField] private AudioClip wandActivatedClip;
+    [SerializeField] UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable[] grabInteractables;
+    [SerializeField] AudioSource grabSound;
+    [SerializeField] AudioClip grabClip;
+    [SerializeField] AudioClip keyClip;
+    [SerializeField] AudioSource activatedSound;
+    [SerializeField] AudioClip grabActivatedClip;
+    [SerializeField] AudioClip wandActivatedClip;
 
-    [Header("Drawer Interactables")]
-    [SerializeField] private DrawerInteractable drawer;
-    private XRSocketInteractor drawerSocket;
-    private AudioSource drawerSound;
-    private AudioSource drawerSocketSound;
-    private AudioClip drawerMoveClip;
-    private AudioClip drawerSocketClip;
+    [Header("Drawer Interactable")]
+    [SerializeField] DrawerInteractable drawer;
+    UnityEngine.XR.Interaction.Toolkit.Interactors.XRSocketInteractor drawerSocket;
+    XrPhysicsButtonInteractable drawerPhysicsButton;
+    private bool isDetached;
+    AudioSource drawerSound;
+    AudioSource drawerSocketSound;
+    AudioClip drawerMoveClip;
+    AudioClip drawerSocketClip;
 
     [Header("Hinge Interactables")]
-    [SerializeField] private SimpleHingeInteractable[] cabinetDoors = new SimpleHingeInteractable[2];
-    private AudioSource[] cabinetDoorSound;
-    private AudioClip cabinetDoorMoveClip;
+    [SerializeField]
+    SimpleHingeInteractable[] cabinetDoors =
+        new SimpleHingeInteractable[2];
+    AudioSource[] cabinetDoorSound;
+    AudioClip cabinetDoorMoveClip;
 
     [Header("Combo Lock")]
-    [SerializeField] private CombinationLock comboLock;
-    private AudioSource comboLockSound;
-    private AudioClip lockComboClip;
-    private AudioClip unlockComboClip;
-    private AudioClip comboButtonPressedClip;
+    [SerializeField] CombinationLock comboLock;
+    AudioSource comboLockSound;
+    AudioClip lockComboClip;
+    AudioClip unlockComboClip;
+    AudioClip comboButtonPressedClip;
 
     [Header("The Wall")]
-    [SerializeField] private TheWall wall;
-    [SerializeField] private AudioSource wallSound;
-    private XRSocketInteractor wallSocket;
-    private AudioSource wallSocketSound;
-    private AudioClip destroyWallClip;
-    private AudioClip wallSocketClip;
+    [SerializeField] TheWall wall;
+    UnityEngine.XR.Interaction.Toolkit.Interactors.XRSocketInteractor wallSocket;
+    [SerializeField] AudioSource wallSound;
+    AudioSource wallSocketSound;
+    AudioClip destroyWallClip;
+    AudioClip wallSocketClip;
 
+    [Header("Joystick Interactable")]
+    [SerializeField] SimpleHingeInteractable joystick;
+    private AudioSource joystickSound;
+    private AudioClip joystickClip;    
+
+    [Header("The Robot")]
+    [SerializeField] NavMeshRobot robot;
+    private AudioSource destroyWallCubeSound;
+    private AudioClip destroyWallCubeClip;
+
+    [Header("Local Audio Settings")]
+    [SerializeField] private AudioSource backgroundMusic;
+    [SerializeField] private AudioClip backgroundMusicClip;
+    [SerializeField] private AudioClip fallBackClip;
+    private const string FallBackClip_Name = "fallBackClip";
     private bool startAudioBool;
 
     private void OnEnable()
@@ -59,18 +77,20 @@ public class XRAudioManager : MonoBehaviour
             progressControl.OnStartGame.AddListener(StartGame);
             progressControl.OnChallengeComplete.AddListener(ChallengeComplete);
         }
-
         if (fallBackClip == null)
         {
-            fallBackClip = AudioClip.Create("FallBack", 1, 1, 1000, false);
+            fallBackClip = AudioClip.Create(FallBackClip_Name, 1, 1, 1000, true);
         }
 
         SetGrabbables();
 
-        if (drawer != null) SetDrawerInteractable();
-        if (wall != null) SetWall();
+        if (drawer != null)
+        {
+            SetDrawerInteractable();
+        }
 
         cabinetDoorSound = new AudioSource[cabinetDoors.Length];
+
         for (int i = 0; i < cabinetDoors.Length; i++)
         {
             if (cabinetDoors[i] != null)
@@ -78,8 +98,55 @@ public class XRAudioManager : MonoBehaviour
                 SetCabinetDoors(i);
             }
         }
+        if (comboLock != null)
+        {
+            SetComboLock();
+        }
+        if (wall != null)
+        {
+            SetWall();
+        }
+        if(joystick != null)
+        {
+            SetJoystick();
+        }
+        if(robot != null)
+        {
+            SetRobot();
+        }
+    }
 
-        if (comboLock != null) SetComboLock();
+    private void SetRobot()
+    {
+        destroyWallCubeSound = robot.transform.AddComponent<AudioSource>();
+        destroyWallCubeClip = robot.GetCollisionClip();
+        destroyWallCubeSound.clip = destroyWallCubeClip;
+        robot.OnDestroyWallCube.AddListener(OnDestroyWallCube);
+    }
+
+    private void OnDestroyWallCube()
+    {
+        destroyWallCubeSound.Play();
+    }
+
+    private void SetJoystick()
+    {
+        joystickClip = joystick.GetHingeMoveClip;
+        joystickSound = joystick.transform.AddComponent<AudioSource>();
+        joystickSound.clip = joystickClip;
+        joystickSound.loop = true;
+        joystick.OnHingeSelected.AddListener(JoystickMove);
+        joystick.selectExited.AddListener(JoystickExited);
+    }
+
+    private void JoystickExited(SelectExitEventArgs arg0)
+    {
+        joystickSound.Stop();
+    }
+
+    private void JoystickMove(SimpleHingeInteractable arg0)
+    {
+        joystickSound.Play();
     }
 
     private void OnDisable()
@@ -89,24 +156,24 @@ public class XRAudioManager : MonoBehaviour
             progressControl.OnStartGame.RemoveListener(StartGame);
             progressControl.OnChallengeComplete.RemoveListener(ChallengeComplete);
         }
-
-        if (grabInteractables != null)
+        for (int i = 0; i < grabInteractables.Length; i++)
         {
-            foreach (var grabbable in grabInteractables)
-            {
-                grabbable.selectEntered.RemoveListener(OnSelectEnteredGrabbable);
-                grabbable.selectExited.RemoveListener(OnSelectExitedGrabbable);
-                grabbable.activated.RemoveListener(OnActivatedGrabbable);
-            }
+            grabInteractables[i].selectEntered.RemoveListener(OnSelectEnterGrabbable);
+            grabInteractables[i].selectExited.RemoveListener(OnSelectExitGrabbable);
+            grabInteractables[i].activated.RemoveListener(OnActivatedGrabbable);
+        }
+        if (drawer != null)
+        {
+            drawer.selectEntered.RemoveListener(OnDrawerMove);
+            drawer.selectExited.RemoveListener(OnDrawerStop);
+            drawer.OnDrawerDetach.RemoveListener(OnDrawerDetach);
         }
 
-        if (wall != null)
+        for (int i = 0; i < cabinetDoors.Length; i++)
         {
-            wall.OnDestroy.RemoveListener(OnDestroyWall);
-            if (wallSocket != null)
-                wallSocket.selectEntered.RemoveListener(OnWallSocketed);
+            cabinetDoors[i].OnHingeSelected.RemoveListener(OnDoorMove);
+            cabinetDoors[i].selectExited.RemoveListener(OnDoorStop);
         }
-
         if (comboLock != null)
         {
             comboLock.UnlockAction -= OnComboUnlocked;
@@ -114,38 +181,15 @@ public class XRAudioManager : MonoBehaviour
             comboLock.ComboButtonPressed -= OnComboButtonPressed;
         }
 
-        if (drawer != null)
+        if (wall != null)
         {
-            drawer.selectEntered.RemoveListener(OnDrawerMove);
-            drawer.selectExited.RemoveListener(OnDrawerStop);
-
-            if (drawerSocket != null)
-                drawerSocket.selectEntered.RemoveListener(OnDrawerSocketed);
+            wall.OnDestroy.RemoveListener(OnDestroyWall);
         }
-
-        foreach (var door in cabinetDoors)
+        if (wallSocket != null)
         {
-            if (door != null)
-            {
-                door.OnHingeSelected.RemoveListener(OnDoorMove);
-                door.selectExited.RemoveListener(OnDoorStop);
-            }
+            wallSocket.selectEntered.RemoveListener(OnWallSocketed);
         }
     }
-
-    void SetCabinetDoors(int index)
-    {
-        cabinetDoorSound[index] = cabinetDoors[index].gameObject.AddComponent<AudioSource>();
-        cabinetDoorMoveClip = cabinetDoors[index].HingeMoveClip;  // Changed to property access
-        CheckIfClipIsNull(ref cabinetDoorMoveClip);
-
-        cabinetDoorSound[index].clip = cabinetDoorMoveClip;
-        cabinetDoorSound[index].loop = true;
-
-        cabinetDoors[index].OnHingeSelected.AddListener(OnDoorMove);
-        cabinetDoors[index].selectExited.AddListener(OnDoorStop);
-    }
-
 
     private void ChallengeComplete(string arg0)
     {
@@ -155,24 +199,89 @@ public class XRAudioManager : MonoBehaviour
             progressSound.Play();
         }
     }
-
-    void SetComboLock()
+    private void StartGame(string arg0)
     {
-        comboLockSound = comboLock.gameObject.AddComponent<AudioSource>();
+        if (!startAudioBool)
+        {
+            startAudioBool = true;
+            if (backgroundMusic != null && backgroundMusicClip != null)
+            {
+                backgroundMusic.clip = backgroundMusicClip;
+                backgroundMusic.Play();
+            }
+        }
+        else
+        {
+            if (progressSound != null && startGameClip != null)
+            {
+                progressSound.clip = startGameClip;
+                progressSound.Play();
+            }
+        }
+    }
 
-        lockComboClip = comboLock.LockClip;  // Changed to property access
-        unlockComboClip = comboLock.UnlockClip;  // Changed to property access
-        comboButtonPressedClip = comboLock.ComboPressedClip;  // Changed to property access
+    private void SetGrabbables()
+    {
+        grabInteractables = FindObjectsByType<UnityEngine.XR.Interaction.Toolkit.Interactables.XRGrabInteractable>(FindObjectsSortMode.None);
+        for (int i = 0; i < grabInteractables.Length; i++)
+        {
+            grabInteractables[i].selectEntered.AddListener(OnSelectEnterGrabbable);
+            grabInteractables[i].selectExited.AddListener(OnSelectExitGrabbable);
+            grabInteractables[i].activated.AddListener(OnActivatedGrabbable);
+        }
+    }
+    private void SetDrawerInteractable()
+    {
+        drawerSound = drawer.transform.AddComponent<AudioSource>();
+        drawerMoveClip = drawer.GetDrawerMoveClip;
+        CheckClip(ref drawerMoveClip);
+        drawerSound.clip = drawerMoveClip;
+        drawerSound.loop = true;
+        drawer.selectEntered.AddListener(OnDrawerMove);
+        drawer.selectExited.AddListener(OnDrawerStop);
+        drawer.OnDrawerDetach.AddListener(OnDrawerDetach);
+        drawerSocket = drawer.GetKeySocket;
+        if (drawerSocket != null)
+        {
+            drawerSocketSound = drawerSocket.transform.AddComponent<AudioSource>();
+            drawerSocketClip = drawer.GetSocketedClip;
+            CheckClip(ref drawerSocketClip);
+            drawerSocketSound.clip = drawerSocketClip;
+            drawerSocket.selectEntered.AddListener(OnDrawerSocketed);
+        }
+        drawerPhysicsButton = drawer.GetPhysicsButton;
+        if (drawerPhysicsButton != null)
+        {
+            drawerPhysicsButton.OnBaseEnter.AddListener(OnPhysicsButtonEnter);
+            drawerPhysicsButton.OnBaseExit.AddListener(OnPhysicsButtonExit);
+        }
+    }
 
-        CheckIfClipIsNull(ref lockComboClip);
-        CheckIfClipIsNull(ref unlockComboClip);
-        CheckIfClipIsNull(ref comboButtonPressedClip);
+
+    private void SetCabinetDoors(int index)
+    {
+        cabinetDoorSound[index] = cabinetDoors[index].transform
+        .AddComponent<AudioSource>();
+        cabinetDoorMoveClip = cabinetDoors[index].GetHingeMoveClip;
+        CheckClip(ref cabinetDoorMoveClip);
+        cabinetDoorSound[index].clip = cabinetDoorMoveClip;
+        cabinetDoors[index].OnHingeSelected.AddListener(OnDoorMove);
+        cabinetDoors[index].selectExited.AddListener(OnDoorStop);
+    }
+    private void SetComboLock()
+    {
+        comboLockSound = comboLock.transform.AddComponent<AudioSource>();
+        lockComboClip = comboLock.GetLockClip;
+        CheckClip(ref lockComboClip);
+        unlockComboClip = comboLock.GetUnlockClip;
+        CheckClip(ref unlockComboClip);
+        comboButtonPressedClip = comboLock.GetComboPressedClip;
+        CheckClip(ref comboButtonPressedClip);
 
         comboLock.UnlockAction += OnComboUnlocked;
         comboLock.LockAction += OnComboLocked;
         comboLock.ComboButtonPressed += OnComboButtonPressed;
     }
-
 
     private void OnComboButtonPressed()
     {
@@ -198,7 +307,7 @@ public class XRAudioManager : MonoBehaviour
         {
             if (arg0.interactableObject == cabinetDoors[i])
             {
-                cabinetDoorSound[i]?.Stop();
+                cabinetDoorSound[i].Stop();
             }
         }
     }
@@ -209,126 +318,112 @@ public class XRAudioManager : MonoBehaviour
         {
             if (arg0 == cabinetDoors[i])
             {
-                cabinetDoorSound[i]?.Play();
+                cabinetDoorSound[i].Play();
             }
-        }
-    }
-
-    private void OnSelectEnteredGrabbable(SelectEnterEventArgs arg0)
-    {
-        grabSound.clip = arg0.interactableObject.transform.CompareTag("Key") ? keyClip : grabClip;
-        grabSound.Play();
-    }
-
-    private void OnSelectExitedGrabbable(SelectExitEventArgs arg0)
-    {
-        grabSound.clip = grabClip;
-        grabSound.Play();
-    }
-
-    private void OnActivatedGrabbable(ActivateEventArgs arg0)
-    {
-        var temp = arg0.interactableObject.transform.gameObject;
-        activatedSound.clip = temp.GetComponent<WandControl>() != null ? wandActivatedClip : grabActivatedClip;
-        activatedSound.Play();
-    }
-
-    private void OnDestroyWall()
-    {
-        if (wallSound != null && destroyWallClip != null)
-        {
-            wallSound.clip = destroyWallClip;
-            wallSound.Play();
-        }
-    }
-
-    private void OnDrawerStop(SelectExitEventArgs arg0) => drawerSound?.Stop();
-    private void OnDrawerMove(SelectEnterEventArgs arg0) => drawerSound?.Play();
-    private void OnWallSocketed(SelectEnterEventArgs arg0) => wallSocketSound?.Play();
-    private void OnDrawerSocketed(SelectEnterEventArgs arg0) => drawerSocketSound?.Play();
-
-    void SetGrabbables()
-    {
-        if (grabInteractables == null || grabInteractables.Length == 0)
-        {
-            grabInteractables = FindObjectsByType<XRGrabInteractable>(FindObjectsSortMode.None);
-        }
-
-        foreach (var grabbable in grabInteractables)
-        {
-            grabbable.selectEntered.AddListener(OnSelectEnteredGrabbable);
-            grabbable.selectExited.AddListener(OnSelectExitedGrabbable);
-            grabbable.activated.AddListener(OnActivatedGrabbable);
         }
     }
 
     private void SetWall()
     {
-        destroyWallClip = wall.DestroyClip;  // Changed to property access
-        CheckIfClipIsNull(ref destroyWallClip);
+        destroyWallClip = wall.GetDestroyClip;
+        CheckClip(ref destroyWallClip);
         wall.OnDestroy.AddListener(OnDestroyWall);
-
-        wallSocket = wall.WallSocket;  // Changed to property access
+        wallSocket = wall.GetWallSocket;
         if (wallSocket != null)
         {
-            wallSocketSound = wallSocket.gameObject.AddComponent<AudioSource>();
-            wallSocketClip = wall.SocketClip;  // Changed to property access
-            CheckIfClipIsNull(ref wallSocketClip);
+            wallSocketSound = wallSocket.transform.AddComponent<AudioSource>();
+            wallSocketClip = wall.GetSocketClip;
+            CheckClip(ref wallSocketClip);
             wallSocketSound.clip = wallSocketClip;
             wallSocket.selectEntered.AddListener(OnWallSocketed);
         }
     }
 
-
-    private void SetDrawerInteractable()
+    private void OnWallSocketed(SelectEnterEventArgs arg0)
     {
-        drawerSound = drawer.gameObject.AddComponent<AudioSource>();
-        drawerMoveClip = drawer.MoveClip;  // Changed to property access
-        CheckIfClipIsNull(ref drawerMoveClip);
-        drawerSound.clip = drawerMoveClip;
-        drawerSound.loop = true;
-
-        drawer.selectEntered.AddListener(OnDrawerMove);
-        drawer.selectExited.AddListener(OnDrawerStop);
-
-        drawerSocket = drawer.SocketIntractor;  // Changed to property access
-        if (drawerSocket != null)
-        {
-            drawerSocketSound = drawerSocket.gameObject.AddComponent<AudioSource>();
-            drawerSocketClip = drawer.SocketedClip;  // Changed to property access
-            CheckIfClipIsNull(ref drawerSocketClip);
-            drawerSocketSound.clip = drawerSocketClip;
-            drawerSocket.selectEntered.AddListener(OnDrawerSocketed);
-        }
+        wallSocketSound.Play();
     }
 
-    private void StartGame(string arg0)
-    {
-        if (!startAudioBool)
-        {
-            startAudioBool = true;
-
-            if (backgroundMusic != null && startGameClip != null)
-            {
-                backgroundMusic.clip = startGameClip;
-                backgroundMusic.Play();
-            }
-        }
-        else
-        {
-            if (progressSound != null && startGameClip != null)
-            {
-                progressSound.clip = startGameClip;
-                progressSound.Play();
-            }
-        }
-    }
-
-    void CheckIfClipIsNull(ref AudioClip clip)
+    private void CheckClip(ref AudioClip clip)
     {
         if (clip == null)
         {
             clip = fallBackClip;
         }
     }
+    private void OnDrawerStop(SelectExitEventArgs arg0)
+    {
+        drawerSound.Stop();
+    }
+    private void OnDrawerMove(SelectEnterEventArgs arg0)
+    {
+        if (isDetached)
+        {
+            PlayGrabSound(grabClip);
+        }
+        else
+        {
+            drawerSound.Play();
+        }       
+    }
+    private void OnDrawerDetach()
+    {
+        isDetached = true;
+        drawerSound.Stop();
+    }
+    private void OnPhysicsButtonExit()
+    {
+        PlayGrabSound(keyClip);
+    }
+
+    private void OnPhysicsButtonEnter()
+    {
+        PlayGrabSound(keyClip);
+    }
+
+    private void OnDrawerSocketed(SelectEnterEventArgs arg0)
+    {
+        drawerSocketSound.Play();
+    }
+    private void OnActivatedGrabbable(ActivateEventArgs arg0)
+    {
+        GameObject tempGameObject = arg0.interactableObject.transform.gameObject;
+        if (tempGameObject.GetComponent<WandControl>() != null)
+        {
+            activatedSound.clip = wandActivatedClip;
+        }
+        else
+        {
+            activatedSound.clip = grabActivatedClip;
+        }
+        activatedSound.Play(); 
+    }
+    private void OnSelectExitGrabbable(SelectExitEventArgs arg0)
+    {
+        PlayGrabSound(grabClip);
+    }
+    private void OnSelectEnterGrabbable(SelectEnterEventArgs arg0)
+    {
+        if (arg0.interactableObject.transform.CompareTag("Key"))
+        {
+            PlayGrabSound(keyClip);
+        }
+        else
+        {
+            PlayGrabSound(grabClip);
+        }
+    }
+    private void OnDestroyWall()
+    {
+        if (wallSound != null)
+        {
+            wallSound.Play();
+        }
+    }
+    private void PlayGrabSound(AudioClip clip)
+    {
+        grabSound.clip = clip;
+        grabSound.Play(); 
+    }
 }
+

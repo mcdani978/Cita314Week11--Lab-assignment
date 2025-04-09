@@ -1,24 +1,14 @@
-using TMPro;
+using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using UnityEngine.XR.Interaction.Toolkit;
+using System;
 
 public class SimpleUIControl : MonoBehaviour
 {
     [SerializeField] ProgressControl progressControl;
-
-    //Serialized Fields
-    [Header("Interactables")]
-    [SerializeField]
-    ButtonInteractable buttonInteractable;
-
-
-
-    [Header("String Handling")]
-
-
-
-    [SerializeField]
-    TMP_Text[] messageTexts;
+    [SerializeField] TMP_Text[] msgTexts;
 
     void OnEnable()
     {
@@ -39,21 +29,11 @@ public class SimpleUIControl : MonoBehaviour
         SetText(arg0);
     }
 
-
-
-
-
-    public void SetText(string message)
+    public void SetText(string msg)
     {
-        //Update all text elements that should change when button is pressed.
-        for (int i = 0; i < messageTexts.Length; i++)
+        for (int i = 0; i < msgTexts.Length; i++)
         {
-            messageTexts[i].text = message;
+            msgTexts[i].text = msg;
         }
     }
-
 }
-
-
-
-  

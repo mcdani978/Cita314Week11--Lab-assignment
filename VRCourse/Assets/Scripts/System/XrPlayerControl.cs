@@ -13,7 +13,7 @@ public class XrPlayerControl : MonoBehaviour
     {
         for (int i = 0; i < grabColliders.Length; i++)
         {
-            if(other == grabColliders[i])
+            if (other == grabColliders[i])
             {
                 SetGrabMovers(true);
             }
@@ -33,7 +33,7 @@ public class XrPlayerControl : MonoBehaviour
 
     private void SetGrabMovers(bool isActive)
     {
-        for(int i = 0; i < grabMovers.Length; i++)
+        for (int i = 0; i < grabMovers.Length; i++)
         {
             grabMovers[i].enabled = isActive;
         }
